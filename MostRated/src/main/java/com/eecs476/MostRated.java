@@ -112,7 +112,7 @@ public class MostRated {
                     }
                     
                     if (currentindex >= 0 && currentindex + 1 < size) {
-                        indexlist.set(currentindex - 1, indexlist.get(currentindex - 1) + 1);
+                        indexlist.set(currentindex, indexlist.get(currentindex) + 1);
                     }
                 } else {
                     genrelist.add(val);

@@ -132,8 +132,8 @@ public class PopularMovies {
                     }
                     
                     if (currentindex >= 0 && currentindex + 1 < size) {
-                        sumlist.set(currentindex - 1, sumlist.get(currentindex - 1) + Double.parseDouble(rating));
-                        numlist.set(currentindex - 1, numlist.get(currentindex - 1) + 1);
+                        sumlist.set(currentindex, sumlist.get(currentindex) + Double.parseDouble(rating));
+                        numlist.set(currentindex, numlist.get(currentindex) + 1);
                     }
                 } else if (myChar == '_') {
                     name = val.substring(1);

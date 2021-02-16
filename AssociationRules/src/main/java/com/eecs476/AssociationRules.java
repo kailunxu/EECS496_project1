@@ -251,3 +251,4 @@ public class AssociationRules {
         finalJob.waitForCompletion(true);
     }
 }
+https://github.com/kailunxu/EECS496_project1.git
