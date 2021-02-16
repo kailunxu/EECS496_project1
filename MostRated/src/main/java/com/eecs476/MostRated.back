@@ -1,0 +1,249 @@
+package com.eecs476;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.util.Calendar;
+import java.io.*;
+import java.util.*;
+
+public class MostRated{
+    //TODO: Finish Part1 Q1 here.
+    public static class Mapper1_rating
+            extends Mapper<IntWritable, Text, Text, Text>{
+
+        // Output:
+        // We have the hardcoded value in our case which is 1: IntWritable
+
+        // Text keyEmit = new Text();
+        // Text valEmit = new Text();
+        // public void map(Text key, Text value, Context context
+        // ) throws IOException, InterruptedException {
+        //     String line = value.toString();
+        //     String parts[] = line.split(",");
+        //     keyEmit.set(parts[0]);
+        //     valEmit.set(parts[3]);
+        //     context.write(keyEmit, valEmit);
+        // }
+    }
+
+    public static class Mapper1_genre
+            extends Mapper<IntWritable, Text, Text, Text>{
+
+        // Output:
+        // We have the hardcoded value in our case which is 1: IntWritable
+
+        // Text keyEmit = new Text();
+        // public void map(Text key, Text value, Context context
+        // ) throws IOException, InterruptedException {
+
+        //     String line = value.toString();
+        //     String parts[] = line.split(",");
+        //     int count = 0;
+        //     for (String part: parts) {
+        //         if (count == 0) {
+        //             keyEmit.set(part);
+        //         } else {
+        //             context.write(keyEmit, new Text(part));
+        //         }
+        //         count++;
+        //     }
+        // }
+    }
+
+    public static class Reducer1
+            extends Reducer<Text,Text,Text,IntWritable> {
+        
+        List<Long> timelist;
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            timelist = new ArrayList<>();
+            for (int i = 1995; i <= 2016; i = i + 3) {
+                Calendar c1 = Calendar.getInstance();
+                c1.set(Calendar.MONTH, 1);
+                c1.set(Calendar.DATE, 1);
+                c1.set(Calendar.YEAR, i);
+                Long currenttime = c1.getTime().getTime();
+                timelist.add(currenttime);
+            }
+        }
+
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            // List<Integer> indexlist = new ArrayList<>();
+            // List<String> genrelist = new ArrayList<>();
+            // for (int i = 1995; i <= 2013; i = i + 3) {
+            //     indexlist.add(0);
+            // }
+            // Text keyEmit = new Text();
+            // Text valEmit = new Text();
+            // int sum = 0;
+            // int size = (2016 - 1995) / 3 + 1;
+            // for (Text value: values) {
+            //     String val = value.toString();
+            //     char myChar = val.charAt(0);
+            //     String genre;
+                
+            //     if (Character.isDigit(myChar)) {
+            //         Long currenttime = Long.parseLong(val);
+            //         int currentindex = -1;
+            //         for (int i = 0; i < size; ++i) {
+            //             if (timelist.get(i) <= currenttime) {
+            //                 currentindex = i;
+            //             }
+            //         }
+            //         if (currentindex >= 0 && currentindex + 1 < size) {
+            //             indexlist.set(currentindex - 1, indexlist.get(currentindex - 1) + 1);
+            //         }
+            //     } else {
+            //         genrelist.add(val);
+            //     }
+            // }
+            // for (String genre: genrelist) {
+            //     for (int i = 0; i < size - 1; ++i) {
+            //         Integer current = indexlist.get(i);
+            //         context.write(new Text(genre + "_" + i), new IntWritable(current));
+            //     }
+            // }
+        }
+    }
+
+    // public static class Mapper2
+    //         extends Mapper<Text, Text, Text, IntWritable>{
+    //     private final static IntWritable one = new IntWritable(1);
+    //     // Input: timestamp, 
+    //     // Output: category, genre
+    //     Text keyEmit = new Text();
+    //     Text valEmit = new Text();
+    //     List<Long> timelist = new ArrayList<>();
+
+    //     protected void setup(Context context
+    //     ) throws IOException, InterruptedException {
+            
+    //     }
+
+    //     public void map(Text key, Text value, Context context
+    //     ) throws IOException, InterruptedException {
+            
+    //         long currenttime = Long.parseLong(key.toString());
+    //         int currentindex = 0;
+    //         for (int i = 0; i < timelist.size(); ++i) {
+    //             if (timelist.get(i) <= currenttime) {
+    //                 currentindex = i + 1;
+    //             }
+    //         }
+    //         if (currentindex >= 1 && currentindex < timelist.size()) {
+    //             context.write(new Text(currentindex + "_" + value), one);
+    //         }
+    //     }
+    // }
+
+    // public static class Reducer2
+    //         extends Reducer<Text,IntWritable,Text,IntWritable> {
+    //     private int result = 0;
+
+    //     // Input: index_text 1
+    //     // Output to a csv
+    //     public void reduce(Text key, Iterable<IntWritable> values,
+    //                        Context context
+    //     ) throws IOException, InterruptedException {
+    //         int sum = 0;
+    //         for (IntWritable val : values) {
+    //             sum += val.get();
+    //         }
+    //         result += sum;
+    //         context.write(key, new IntWritable(result));
+    //     }
+    // }
+
+    // public static class Mapper3
+    //         extends Mapper<Text, IntWritable, Text, IntWritable>{
+    //     public void map(Text key, IntWritable value, Context context
+    //     ) throws IOException, InterruptedException {
+    //         context.write(key, value);
+    //     }
+    // }
+
+    // public static class Reducer3
+    //         extends Reducer<Text,IntWritable,Text,IntWritable> {
+    //     private int result = 0;
+
+    //     // Input: index_text 1
+    //     // Output to a csv
+    //     public void reduce(Text key, Iterable<IntWritable> values,
+    //                        Context context
+    //     ) throws IOException, InterruptedException {
+    //         int sum = 0;
+    //         for (IntWritable val : values) {
+    //             sum += val.get();
+    //         }
+    //         result += sum;
+    //         int timeconvert[] = {1995, 1998, 2001, 2004, 2007, 2010, 2013};
+    //         String all[] = key.toString().split("_");
+    //         String ind = all[0];
+    //         String value = all[1];
+    //         int index = Integer.parseInt(ind);
+    //         // context.write(timeconvert[i], new IntWritable(result));
+    //     }
+    // }
+    private static String ratingsFile;
+    private static String genresFile;
+    private static String outputScheme;
+    public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
+        for(int i = 0; i < args.length; ++i) {
+            if (args[i].equals("--ratingsFile")) {
+                ratingsFile = args[++i];
+            } else if (args[i].equals("--genresFile")) {
+                genresFile = args[++i];
+            } else if (args[i].equals("--outputScheme")) {
+                outputScheme = args[++i];
+            }
+            else {
+                throw new IllegalArgumentException("Illegal cmd line arguement");
+            }
+        }
+
+        if (ratingsFile == null || genresFile == null || outputScheme == null) {
+            throw new RuntimeException("Either outputpath or input path are not defined");
+        }
+
+        Configuration conf = new Configuration();
+        conf.set("mapred.textoutputformat.separator", ",");
+        conf.set("mapreduce.job.queuename", "eecs476w21");
+
+        Job mergeJob = Job.getInstance(conf, "mergejob");
+        mergeJob.setJarByClass(MostRated.class);
+        mergeJob.setNumReduceTasks(1);
+
+        mergeJob.setMapperClass(Mapper1_rating.class);
+        FileInputFormat.addInputPath(mergeJob, new Path(ratingsFile));
+        // MultipleInputs.addInputPath(mergeJob, new Path(ratingsFile), FileInputFormat.class,
+        // Mapper1_rating.class);
+        // MultipleInputs.addInputPath(mergeJob, new Path(genresFile), FileInputFormat.class,
+        // Mapper1_genre.class);
+        mergeJob.setReducerClass(Reducer1.class);
+        
+
+        // set mapper output key and value class
+        // if mapper and reducer output are the same types, you skip
+        mergeJob.setMapOutputKeyClass(Text.class);
+        mergeJob.setMapOutputValueClass(Text.class);
+
+        // set reducer output key and value class
+        mergeJob.setOutputKeyClass(Text.class);
+        mergeJob.setOutputValueClass(IntWritable.class);
+
+        FileOutputFormat.setOutputPath(mergeJob, new Path(outputScheme + "1"));
+        mergeJob.waitForCompletion(true);
+    }
+}
