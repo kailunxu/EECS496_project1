@@ -76,15 +76,15 @@ public class AssociationRules {
             String parts[] = line.split(",");
             System.out.println("enter." + line);
             int size = parts.length;
-            if (k == 2) {
-                for (int i = 1; i < size; ++i) {
-                    for (int j = i + 1; j < size; ++j) {
-                        context.write(new Text(parts[i]), new Text(parts[j]));
-                        
-                        context.write(new Text(parts[j]), new Text(parts[i]));
-                    }
+            
+            for (int i = 1; i < size; ++i) {
+                for (int j = i + 1; j < size; ++j) {
+                    context.write(new Text(parts[i]), new Text(parts[j]));
+                    
+                    context.write(new Text(parts[j]), new Text(parts[i]));
                 }
             }
+            
         }
     }
 
@@ -133,7 +133,12 @@ public class AssociationRules {
     public static class Reducer3
             extends Reducer<Text,Text,Text,Text> {
         
-
+        Integer s = 0;
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            s = Integer.parseInt(conf.get("s"));
+        }
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
@@ -151,19 +156,17 @@ public class AssociationRules {
         }
     }
 
-    private static Integer k;
-    private static Integer s;
+    
     
     private static String ratingsFile;
     private static String outputScheme;
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
+        Integer s = 0;
         for(int i = 0; i < args.length; ++i) {
             if (args[i].equals("--ratingsFile")) {
                 ratingsFile = args[++i];
             } else if (args[i].equals("--outputScheme")) {
                 outputScheme = args[++i];
-            } else if (args[i].equals("-k")) {
-                k = Integer.parseInt(args[++i]);
             } else if (args[i].equals("-s")) {
                 s = Integer.parseInt(args[++i]);
             } else {
@@ -178,7 +181,7 @@ public class AssociationRules {
         Configuration conf = new Configuration();
         conf.set("mapred.textoutputformat.separator", ",");
         conf.set("mapreduce.job.queuename", "eecs476w21");         // required for this to work on GreatLakes
-
+        conf.set("s", s.toString());
 
         Job mergeJob = Job.getInstance(conf, "mergeJob");
         mergeJob.setJarByClass(AssociationRules.class);
@@ -251,4 +254,3 @@ public class AssociationRules {
         finalJob.waitForCompletion(true);
     }
 }
-https://github.com/kailunxu/EECS496_project1.git
