@@ -92,7 +92,12 @@ public class AssociationRules {
     public static class Reducer2
             extends Reducer<Text,Text,Text,Text> {
         
-
+        Integer s = 0;
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            s = Integer.parseInt(conf.get("s"));
+        }
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
@@ -103,14 +108,13 @@ public class AssociationRules {
                 currents += 1;
                 list.add(value.toString());
             }
-            
-            for (String s: list) {
-                context.write(key, new Text(s + "," + currents.toString()));
-                // context.write(key, new Text("good"));
+            if (currents >= s) {
+                for (String s: list) {
+                    context.write(key, new Text(s + "," + currents.toString()));
+                    // context.write(key, new Text("good"));
+                }
             }
-            // if (s <= currents) {
-            //     context.write(new Text(index), new Text(currents.toString()));
-            // }
+            
         }
     }
 
