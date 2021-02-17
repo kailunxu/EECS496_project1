@@ -21,10 +21,9 @@ import java.io.FileNotFoundException;  // Import this class to handle errors
 import java.util.Scanner; // Import the Scanner class to read text files
 import java.io.FileWriter;
 
+
+
 public class FrequentItemsets {
-
-
-    
 
     public static class Mapper1_rating
             extends Mapper<LongWritable, Text, Text, Text>{
@@ -40,7 +39,7 @@ public class FrequentItemsets {
             keyEmit.set(parts[0]);
             valEmit.set(parts[1]);
             context.write(keyEmit, valEmit);
-            System.out.println("enter." + line);
+            
         }
     }
 
@@ -70,35 +69,64 @@ public class FrequentItemsets {
     }
 
     public static class Mapper2
-            extends Mapper<LongWritable, Text, Text, Text>{
+            extends Mapper<LongWritable, Text, Text, IntWritable>{
 
         // Output: id, timestamp
-        Integer k = 0;
+        public List<List<String>> nextrecords = new ArrayList<List<String>>();
+        public ArrayList<String> allitems = new ArrayList<String>();
+
+        private final static IntWritable one = new IntWritable(1);
         
+        private static String count = null;
+
         protected void setup(Context context
         ) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            k = Integer.parseInt(conf.get("k"));
-            
+            String record = conf.get("map.record.file");
+            String k = conf.get("k");
+            String isDirectory = conf.get("map.record.isDirectory");
+            count = conf.get("map.record.isDirectory");
+            System.out.println("enter." + isDirectory);
+            if(!isDirectory.equals("true")){
+                nextrecords = Assitance.getNextRecord(record, isDirectory);
+            }
+
+            if(nextrecords.isEmpty()||nextrecords.size()==0){
+                List<String> finish = new ArrayList<String>();
+                finish.add("null");
+                nextrecords.add(finish);
+            }
         }
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String line = value.toString();
             String parts[] = line.split(",");
-            int size = parts.length;
-            if (k == 2) {
-                for (int i = 1; i < size; ++i) {
-                    for (int j = i + 1; j < size; ++j) {
-                        context.write(new Text(parts[i] + "_" + parts[j]), new Text(parts[0]));
-                    }
+            System.out.println("enter." + line);
+            
+            if(!count.equals("false")){
+                for(int i = 1; i < parts.length; ++i) {
+                    
+                    context.write(new Text(parts[i]), one);
                 }
-            }
-            if (k == 3) {
-                for (int i = 1; i < size; ++i) {
-                    for (int j = i + 1; j < size; ++j) {
-                        for (int l = j + 1; l < size; ++l) {
-                            context.write(new Text(parts[i] + "_" + parts[j] + "_" + parts[l]), new Text(parts[0]));
+            } else {
+                List<String> dstr = new ArrayList<String>();
+            
+                for(int i = 1; i < parts.length; ++i){
+                    dstr.add(parts[i]);
+                }
+
+                for(int i = 0; i < nextrecords.size();i++){
+                    String word = "";
+                    System.out.println("enter." + nextrecords.get(i));
+                    if(dstr.containsAll(nextrecords.get(i))){
+                        for (String s: nextrecords.get(i)) {
+                            if (word.equals("")) {
+                                word = s;
+                            } else {
+                                word = word + "," + s;
+                            }
                         }
+                        context.write(new Text(word), one);
                     }
                 }
             }
@@ -107,7 +135,7 @@ public class FrequentItemsets {
 
     
     public static class Reducer2
-            extends Reducer<Text,Text,Text,Text> {
+            extends Reducer<Text,IntWritable,Text,Text> {
         
         Integer s = 0;
         protected void setup(Context context
@@ -116,24 +144,15 @@ public class FrequentItemsets {
             s = Integer.parseInt(conf.get("s"));
         }
 
-        public void reduce(Text key, Iterable<Text> values,
+        public void reduce(Text key, Iterable<IntWritable> values,
                            Context context
         ) throws IOException, InterruptedException {
             Integer currents = 0;
-            for (Text value: values) {
+            for (IntWritable value: values) {
                 currents += 1;
             }
-            String all[] = key.toString().split("_");
-            String index = "";
-            for (String k : all) {
-                if (index.equals("") == false) {
-                    index = index + "," + k;
-                } else {
-                    index = index + k;
-                }
-            }
-            if (s <= currents) {
-                context.write(new Text(index), new Text(currents.toString()));
+            if (currents >= s) {
+                context.write(key, new Text(currents.toString()));
             }
         }
     }
@@ -168,6 +187,7 @@ public class FrequentItemsets {
         conf.set("mapreduce.job.queuename", "eecs476w21");         // required for this to work on GreatLakes
         conf.set("k", k.toString());
         conf.set("s", s.toString());
+        conf.set("map.record.file", ratingsFile);
 
         Job mergeJob = Job.getInstance(conf, "mergeJob");
         mergeJob.setJarByClass(FrequentItemsets.class);
@@ -195,10 +215,12 @@ public class FrequentItemsets {
         FileOutputFormat.setOutputPath(mergeJob, new Path(outputScheme + "1"));
 
         mergeJob.waitForCompletion(true);
+
+        conf.set("map.record.isDirectory", "true");
         
         Job outputJob = Job.getInstance(conf, "outputJob");
         outputJob.setJarByClass(FrequentItemsets.class);
-        outputJob.setNumReduceTasks(10);
+        outputJob.setNumReduceTasks(1);
 
         outputJob.setMapperClass(Mapper2.class);
         outputJob.setReducerClass(Reducer2.class);
@@ -206,7 +228,7 @@ public class FrequentItemsets {
         // set mapper output key and value class
         // if mapper and reducer output are the same types, you skip
         outputJob.setMapOutputKeyClass(Text.class);
-        outputJob.setMapOutputValueClass(Text.class);
+        outputJob.setMapOutputValueClass(IntWritable.class);
 
         // set reducer output key and value class
         outputJob.setOutputKeyClass(Text.class);
@@ -216,5 +238,32 @@ public class FrequentItemsets {
         FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "2"));
 
         outputJob.waitForCompletion(true);
+
+        // Assitance.SaveNextRecords(outputScheme + "2", "output", 0);
+
+        conf.set("map.record.isDirectory", "false");
+        conf.set("map.record.file", outputScheme + "2/part-r-00000");
+        Job outputJob2 = Job.getInstance(conf, "outputJob");
+        outputJob2.setJarByClass(FrequentItemsets.class);
+        outputJob2.setNumReduceTasks(1);
+
+        outputJob2.setMapperClass(Mapper2.class);
+        outputJob2.setReducerClass(Reducer2.class);
+
+        // set mapper output key and value class
+        // if mapper and reducer output are the same types, you skip
+        outputJob2.setMapOutputKeyClass(Text.class);
+        outputJob2.setMapOutputValueClass(IntWritable.class);
+
+        // set reducer output key and value class
+        outputJob2.setOutputKeyClass(Text.class);
+        outputJob2.setOutputValueClass(Text.class);
+
+        FileInputFormat.addInputPath(outputJob2, new Path(outputScheme + "1"));
+        FileOutputFormat.setOutputPath(outputJob2, new Path(outputScheme + "3"));
+
+        outputJob2.waitForCompletion(true);
+
+        // Assitance.SaveNextRecords(outputScheme + "3", "output", 1);
     }
 }

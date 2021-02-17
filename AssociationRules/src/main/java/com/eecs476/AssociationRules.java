@@ -21,7 +21,10 @@ import java.io.FileNotFoundException;  // Import this class to handle errors
 import java.util.Scanner; // Import the Scanner class to read text files
 import java.io.FileWriter;
 
+
+
 public class AssociationRules {
+
     public static class Mapper1_rating
             extends Mapper<LongWritable, Text, Text, Text>{
 
@@ -36,7 +39,7 @@ public class AssociationRules {
             keyEmit.set(parts[0]);
             valEmit.set(parts[1]);
             context.write(keyEmit, valEmit);
-            System.out.println("enter." + line);
+            
         }
     }
 
@@ -53,7 +56,7 @@ public class AssociationRules {
             for (Text value : values) {
                 list.add(value.toString());
             }
-            // Collections.sort(list);
+            Collections.sort(list);
             for (String s: list) {
                 if (index.equals("") == false) {
                     index = index + "," + s;
@@ -66,31 +69,74 @@ public class AssociationRules {
     }
 
     public static class Mapper2
-            extends Mapper<LongWritable, Text, Text, Text>{
+            extends Mapper<LongWritable, Text, Text, IntWritable>{
 
         // Output: id, timestamp
+        public List<List<String>> nextrecords = new ArrayList<List<String>>();
+        public List<String> numberrecords = new ArrayList<String>();
+        public ArrayList<String> allitems = new ArrayList<String>();
 
+        private final static IntWritable one = new IntWritable(1);
+        
+        private static String count = null;
+
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            String record = conf.get("map.record.file");
+            String k = conf.get("k");
+            String isDirectory = conf.get("map.record.isDirectory");
+            count = conf.get("map.record.isDirectory");
+            System.out.println("enter." + isDirectory);
+            if(!isDirectory.equals("true")){
+                nextrecords = Assitance.getNextRecord(record, isDirectory);
+            }
+
+            if(nextrecords.isEmpty()||nextrecords.size()==0){
+                List<String> finish = new ArrayList<String>();
+                finish.add("null");
+                nextrecords.add(finish);
+            }
+        }
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String line = value.toString();
             String parts[] = line.split(",");
             System.out.println("enter." + line);
-            int size = parts.length;
             
-            for (int i = 1; i < size; ++i) {
-                for (int j = i + 1; j < size; ++j) {
-                    context.write(new Text(parts[i]), new Text(parts[j]));
+            if(!count.equals("false")){
+                for(int i = 1; i < parts.length; ++i) {
                     
-                    context.write(new Text(parts[j]), new Text(parts[i]));
+                    context.write(new Text(parts[i]), one);
+                }
+            } else {
+                List<String> dstr = new ArrayList<String>();
+            
+                for(int i = 1; i < parts.length; ++i){
+                    dstr.add(parts[i]);
+                }
+
+                for(int i = 0; i < nextrecords.size();i++){
+                    String word = "";
+                    System.out.println("enter." + nextrecords.get(i));
+                    if(dstr.containsAll(nextrecords.get(i))){
+                        for (String s: nextrecords.get(i)) {
+                            if (word.equals("")) {
+                                word = s;
+                            } else {
+                                word = word + "," + s;
+                            }
+                        }
+                        context.write(new Text(word), one);
+                    }
                 }
             }
-            
         }
     }
 
     
     public static class Reducer2
-            extends Reducer<Text,Text,Text,Text> {
+            extends Reducer<Text,IntWritable,Text,Text> {
         
         Integer s = 0;
         protected void setup(Context context
@@ -98,79 +144,34 @@ public class AssociationRules {
             Configuration conf = context.getConfiguration();
             s = Integer.parseInt(conf.get("s"));
         }
-        public void reduce(Text key, Iterable<Text> values,
+
+        public void reduce(Text key, Iterable<IntWritable> values,
                            Context context
         ) throws IOException, InterruptedException {
-            System.out.println("enter." + key.toString());
             Integer currents = 0;
-            ArrayList<String> list = new ArrayList<String>();
-            for (Text value: values) {
+            for (IntWritable value: values) {
                 currents += 1;
-                list.add(value.toString());
             }
             if (currents >= s) {
-                for (String s: list) {
-                    context.write(key, new Text(s + "," + currents.toString()));
-                    // context.write(key, new Text("good"));
-                }
-            }
-            
-        }
-    }
-
-
-    public static class Mapper3
-            extends Mapper<LongWritable, Text, Text, Text>{
-
-        // Output: id, timestamp
-
-        Text keyEmit = new Text();
-        Text valEmit = new Text();
-        public void map(LongWritable key, Text value, Context context
-        ) throws IOException, InterruptedException {
-            String line = value.toString();
-            String parts[] = line.split(",");
-            context.write(new Text(parts[0] + "_" + parts[1]), new Text(parts[2]));
-        }
-    }
-
-    public static class Reducer3
-            extends Reducer<Text,Text,Text,Text> {
-        
-        Integer s = 0;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            Configuration conf = context.getConfiguration();
-            s = Integer.parseInt(conf.get("s"));
-        }
-        public void reduce(Text key, Iterable<Text> values,
-                           Context context
-        ) throws IOException, InterruptedException {
-            Integer currents = 0;
-            Double alls = 0.0;
-            for (Text value: values) {
-                currents += 1;
-                alls = Double.parseDouble(value.toString());
-            }
-            String all[] = key.toString().split("_");
-            
-            if (s <= currents) {
-                context.write(new Text(all[0] + "," + all[1]), new Text(Double.toString(currents/alls * 2.0)));
+                context.write(key, new Text(currents.toString()));
             }
         }
     }
 
-    
-    
-    private static String ratingsFile;
-    private static String outputScheme;
+    public static String ratingsFile;
+    public static String outputScheme;
+
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
+        Integer k = 0;
         Integer s = 0;
+    
         for(int i = 0; i < args.length; ++i) {
             if (args[i].equals("--ratingsFile")) {
                 ratingsFile = args[++i];
             } else if (args[i].equals("--outputScheme")) {
                 outputScheme = args[++i];
+            } else if (args[i].equals("-k")) {
+                k = Integer.parseInt(args[++i]);
             } else if (args[i].equals("-s")) {
                 s = Integer.parseInt(args[++i]);
             } else {
@@ -185,7 +186,9 @@ public class AssociationRules {
         Configuration conf = new Configuration();
         conf.set("mapred.textoutputformat.separator", ",");
         conf.set("mapreduce.job.queuename", "eecs476w21");         // required for this to work on GreatLakes
+        conf.set("k", k.toString());
         conf.set("s", s.toString());
+        conf.set("map.record.file", ratingsFile);
 
         Job mergeJob = Job.getInstance(conf, "mergeJob");
         mergeJob.setJarByClass(AssociationRules.class);
@@ -213,6 +216,8 @@ public class AssociationRules {
         FileOutputFormat.setOutputPath(mergeJob, new Path(outputScheme + "1"));
 
         mergeJob.waitForCompletion(true);
+
+        conf.set("map.record.isDirectory", "true");
         
         Job outputJob = Job.getInstance(conf, "outputJob");
         outputJob.setJarByClass(AssociationRules.class);
@@ -224,7 +229,7 @@ public class AssociationRules {
         // set mapper output key and value class
         // if mapper and reducer output are the same types, you skip
         outputJob.setMapOutputKeyClass(Text.class);
-        outputJob.setMapOutputValueClass(Text.class);
+        outputJob.setMapOutputValueClass(IntWritable.class);
 
         // set reducer output key and value class
         outputJob.setOutputKeyClass(Text.class);
@@ -235,26 +240,31 @@ public class AssociationRules {
 
         outputJob.waitForCompletion(true);
 
+        // Assitance.SaveNextRecords(outputScheme + "2", "output", 0);
 
-        Job finalJob = Job.getInstance(conf, "outputJob");
-        finalJob.setJarByClass(AssociationRules.class);
-        finalJob.setNumReduceTasks(1);
+        conf.set("map.record.isDirectory", "false");
+        conf.set("map.record.file", outputScheme + "2/part-r-00000");
+        Job outputJob2 = Job.getInstance(conf, "outputJob");
+        outputJob2.setJarByClass(AssociationRules.class);
+        outputJob2.setNumReduceTasks(1);
 
-        finalJob.setMapperClass(Mapper3.class);
-        finalJob.setReducerClass(Reducer3.class);
+        outputJob2.setMapperClass(Mapper2.class);
+        outputJob2.setReducerClass(Reducer2.class);
 
         // set mapper output key and value class
         // if mapper and reducer output are the same types, you skip
-        finalJob.setMapOutputKeyClass(Text.class);
-        finalJob.setMapOutputValueClass(Text.class);
+        outputJob2.setMapOutputKeyClass(Text.class);
+        outputJob2.setMapOutputValueClass(IntWritable.class);
 
         // set reducer output key and value class
-        finalJob.setOutputKeyClass(Text.class);
-        finalJob.setOutputValueClass(Text.class);
+        outputJob2.setOutputKeyClass(Text.class);
+        outputJob2.setOutputValueClass(Text.class);
 
-        FileInputFormat.addInputPath(finalJob, new Path(outputScheme + "2"));
-        FileOutputFormat.setOutputPath(finalJob, new Path(outputScheme + "3"));
+        FileInputFormat.addInputPath(outputJob2, new Path(outputScheme + "1"));
+        FileOutputFormat.setOutputPath(outputJob2, new Path(outputScheme + "3"));
 
-        finalJob.waitForCompletion(true);
+        outputJob2.waitForCompletion(true);
+
+        // Assitance.SaveNextRecords(outputScheme + "3", "output", 1);
     }
 }
