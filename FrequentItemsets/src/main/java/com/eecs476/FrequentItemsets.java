@@ -198,7 +198,7 @@ public class FrequentItemsets {
         
         Job outputJob = Job.getInstance(conf, "outputJob");
         outputJob.setJarByClass(FrequentItemsets.class);
-        outputJob.setNumReduceTasks(1);
+        outputJob.setNumReduceTasks(10);
 
         outputJob.setMapperClass(Mapper2.class);
         outputJob.setReducerClass(Reducer2.class);
