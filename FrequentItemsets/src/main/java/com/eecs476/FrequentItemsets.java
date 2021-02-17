@@ -22,6 +22,10 @@ import java.util.Scanner; // Import the Scanner class to read text files
 import java.io.FileWriter;
 
 public class FrequentItemsets {
+
+
+    
+
     public static class Mapper1_rating
             extends Mapper<LongWritable, Text, Text, Text>{
 
@@ -69,9 +73,14 @@ public class FrequentItemsets {
             extends Mapper<LongWritable, Text, Text, Text>{
 
         // Output: id, timestamp
-
-        Text keyEmit = new Text();
-        Text valEmit = new Text();
+        Integer k = 0;
+        
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            k = Integer.parseInt(conf.get("k"));
+            
+        }
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String line = value.toString();
@@ -100,6 +109,12 @@ public class FrequentItemsets {
     public static class Reducer2
             extends Reducer<Text,Text,Text,Text> {
         
+        Integer s = 0;
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            s = Integer.parseInt(conf.get("s"));
+        }
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
@@ -123,12 +138,13 @@ public class FrequentItemsets {
         }
     }
 
-    private static Integer k;
-    private static Integer s;
-    
-    private static String ratingsFile;
-    private static String outputScheme;
+    public static String ratingsFile;
+    public static String outputScheme;
+
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
+        Integer k = 0;
+        Integer s = 0;
+    
         for(int i = 0; i < args.length; ++i) {
             if (args[i].equals("--ratingsFile")) {
                 ratingsFile = args[++i];
@@ -150,7 +166,8 @@ public class FrequentItemsets {
         Configuration conf = new Configuration();
         conf.set("mapred.textoutputformat.separator", ",");
         conf.set("mapreduce.job.queuename", "eecs476w21");         // required for this to work on GreatLakes
-
+        conf.set("k", k.toString());
+        conf.set("s", s.toString());
 
         Job mergeJob = Job.getInstance(conf, "mergeJob");
         mergeJob.setJarByClass(FrequentItemsets.class);
