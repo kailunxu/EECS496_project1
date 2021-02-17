@@ -72,64 +72,22 @@ public class AssociationRules {
             extends Mapper<LongWritable, Text, Text, IntWritable>{
 
         // Output: id, timestamp
-        public List<List<String>> nextrecords = new ArrayList<List<String>>();
-        public List<String> numberrecords = new ArrayList<String>();
-        public ArrayList<String> allitems = new ArrayList<String>();
 
         private final static IntWritable one = new IntWritable(1);
         
-        private static String count = null;
 
         protected void setup(Context context
         ) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            String record = conf.get("map.record.file");
-            String k = conf.get("k");
-            String isDirectory = conf.get("map.record.isDirectory");
-            count = conf.get("map.record.isDirectory");
-            System.out.println("enter." + isDirectory);
-            if(!isDirectory.equals("true")){
-                nextrecords = Assitance.getNextRecord(record, isDirectory);
-            }
-
-            if(nextrecords.isEmpty()||nextrecords.size()==0){
-                List<String> finish = new ArrayList<String>();
-                finish.add("null");
-                nextrecords.add(finish);
-            }
         }
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String line = value.toString();
             String parts[] = line.split(",");
-            System.out.println("enter." + line);
             
-            if(!count.equals("false")){
-                for(int i = 1; i < parts.length; ++i) {
-                    
-                    context.write(new Text(parts[i]), one);
-                }
-            } else {
-                List<String> dstr = new ArrayList<String>();
             
-                for(int i = 1; i < parts.length; ++i){
-                    dstr.add(parts[i]);
-                }
-
-                for(int i = 0; i < nextrecords.size();i++){
-                    String word = "";
-                    System.out.println("enter." + nextrecords.get(i));
-                    if(dstr.containsAll(nextrecords.get(i))){
-                        for (String s: nextrecords.get(i)) {
-                            if (word.equals("")) {
-                                word = s;
-                            } else {
-                                word = word + "," + s;
-                            }
-                        }
-                        context.write(new Text(word), one);
-                    }
-                }
+            for(int i = 1; i < parts.length; ++i) {
+                context.write(new Text(parts[i]), one);
             }
         }
     }
@@ -154,6 +112,80 @@ public class AssociationRules {
             }
             if (currents >= s) {
                 context.write(key, new Text(currents.toString()));
+            }
+        }
+    }
+
+    public static class Mapper3
+            extends Mapper<LongWritable, Text, Text, IntWritable>{
+
+        // Output: id, timestamp
+        public List<List<String>> nextrecords = new ArrayList<List<String>>();
+        private final static IntWritable one = new IntWritable(1);
+        
+
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            String record = conf.get("map.record.file");
+            String k = conf.get("k");
+            
+            nextrecords = Assitance.getNextRecord(record, "false");
+            
+
+        }
+        public void map(LongWritable key, Text value, Context context
+        ) throws IOException, InterruptedException {
+            String line = value.toString();
+            String parts[] = line.split(",");
+            System.out.println("enter." + line);
+            
+            
+            List<String> dstr = new ArrayList<String>();
+        
+            for(int i = 1; i < parts.length; ++i){
+                dstr.add(parts[i]);
+            }
+
+            for(int i = 0; i < nextrecords.size();i++){
+                String word = "";
+                System.out.println("enter." + nextrecords.get(i));
+                if(dstr.containsAll(nextrecords.get(i))){
+                    word = nextrecords.get(i).get(0) + "_" + nextrecords.get(i).get(1);
+                    context.write(new Text(word), one);
+                }
+            }
+        }
+    }
+
+    
+    public static class Reducer3
+            extends Reducer<Text,IntWritable,Text,Text> {
+        
+        Integer s = 0;
+        public Map<String, Integer> numberrecords = new HashMap<String, Integer>();
+        protected void setup(Context context
+        ) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            s = Integer.parseInt(conf.get("s"));
+            String record = conf.get("map.record.file");
+            numberrecords = Assitance.getMap(record);
+        }
+
+        public void reduce(Text key, Iterable<IntWritable> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            Integer currents = 0;
+            for (IntWritable value: values) {
+                currents += 1;
+            }
+            String all[] = key.toString().split("_");
+            Double num1 = Double.valueOf(numberrecords.get(all[0]));
+            Double num2 = Double.valueOf(numberrecords.get(all[1]));
+
+            if (currents >= s) {
+                context.write(new Text(all[0] + "->" + all[1]), new Text(Double.toString(currents/num1)));
+                context.write(new Text(all[1] + "->" + all[0]), new Text(Double.toString(currents/num2)));
             }
         }
     }
@@ -217,7 +249,6 @@ public class AssociationRules {
 
         mergeJob.waitForCompletion(true);
 
-        conf.set("map.record.isDirectory", "true");
         
         Job outputJob = Job.getInstance(conf, "outputJob");
         outputJob.setJarByClass(AssociationRules.class);
@@ -242,14 +273,14 @@ public class AssociationRules {
 
         // Assitance.SaveNextRecords(outputScheme + "2", "output", 0);
 
-        conf.set("map.record.isDirectory", "false");
         conf.set("map.record.file", outputScheme + "2/part-r-00000");
+
         Job outputJob2 = Job.getInstance(conf, "outputJob");
         outputJob2.setJarByClass(AssociationRules.class);
         outputJob2.setNumReduceTasks(1);
 
-        outputJob2.setMapperClass(Mapper2.class);
-        outputJob2.setReducerClass(Reducer2.class);
+        outputJob2.setMapperClass(Mapper3.class);
+        outputJob2.setReducerClass(Reducer3.class);
 
         // set mapper output key and value class
         // if mapper and reducer output are the same types, you skip

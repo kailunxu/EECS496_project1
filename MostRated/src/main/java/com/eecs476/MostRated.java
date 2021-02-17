@@ -69,33 +69,16 @@ public class MostRated {
 
     public static class Reducer1
             extends Reducer<Text,Text,Text,IntWritable> {
-        
-        List<Long> timelist;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            timelist = new ArrayList<>();
-            for (int i = 1995; i <= 2016; i = i + 3) {
-                Calendar c1 = Calendar.getInstance();
-                c1.set(Calendar.MONTH, 1);
-                c1.set(Calendar.DATE, 1);
-                c1.set(Calendar.YEAR, i);
-                Long currenttime = c1.getTime().getTime()/1000;
-                timelist.add(currenttime);
-            }
-        }
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            List<Integer> indexlist = new ArrayList<>();
+            Map<Integer, Integer> indexlist = new HashMap<Integer, Integer>();
             List<String> genrelist = new ArrayList<>();
-            for (int i = 1995; i <= 2013; i = i + 3) {
-                indexlist.add(0);
-            }
+            
             Text keyEmit = new Text();
             Text valEmit = new Text();
             int sum = 0;
-            int size = (2016 - 1995) / 3 + 1;
             for (Text value: values) {
                 String val = value.toString();
                 
@@ -103,22 +86,24 @@ public class MostRated {
                 String genre;
                 
                 if (Character.isDigit(myChar)) {
-                    Long currenttime = Long.parseLong(val);
                     int currentindex = -1;
-                    for (int i = 0; i < size; ++i) {
-                        if (timelist.get(i) <= currenttime) {
-                            currentindex = i;
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTimeInMillis(Long.parseLong(val) * 1000);
+                    int year = cal.get(Calendar.YEAR);
+                    year = (year / 3) * 3;
+                    System.out.println("enter." + year);
+                    if (year >= 1995 && year <= 2013) {
+                        if (indexlist.containsKey(year)) {
+                            indexlist.put(year, indexlist.get(year) + 1);
+                        } else {
+                            indexlist.put(year, 1);
                         }
-                    }
-                    
-                    if (currentindex >= 0 && currentindex + 1 < size) {
-                        indexlist.set(currentindex, indexlist.get(currentindex) + 1);
                     }
                 } else {
                     genrelist.add(val);
                 }
             }
-            for (int i = 0; i < size - 1; ++i) {
+            for (Integer i: indexlist.keySet()) {
                 Integer current = indexlist.get(i);
                 if (current != 0) {
                     for (String genre: genrelist) {
@@ -134,7 +119,6 @@ public class MostRated {
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String all[] = value.toString().split(",");
-            System.out.println("enter." + all[0] + ":" + all[1]);
             context.write(new Text(all[0]), new IntWritable(Integer.parseInt(all[1])));
         }
     }
@@ -146,14 +130,14 @@ public class MostRated {
         // Input: index_text 1
         // Output to a csv
 
-        List<Integer> convertlist;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            convertlist = new ArrayList<>();
-            for (int i = 1995; i <= 2016; i = i + 3) {
-                convertlist.add(i);
-            }
-        }
+        // List<Integer> convertlist;
+        // protected void setup(Context context
+        // ) throws IOException, InterruptedException {
+        //     convertlist = new ArrayList<>();
+        //     for (int i = 1995; i <= 2016; i = i + 3) {
+        //         convertlist.add(i);
+        //     }
+        // }
         public void reduce(Text key, Iterable<IntWritable> values,
                            Context context
         ) throws IOException, InterruptedException {
@@ -162,7 +146,7 @@ public class MostRated {
                 sum += val.get();
             }
             String all[] = key.toString().split("_");
-            Integer year = convertlist.get(Integer.parseInt(all[1]));
+            Integer year = Integer.parseInt(all[1]);
             context.write(new Text(all[0] + "," + year.toString()), new IntWritable(sum));
         }
     }

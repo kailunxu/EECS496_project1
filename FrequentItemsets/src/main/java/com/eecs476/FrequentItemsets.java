@@ -39,7 +39,6 @@ public class FrequentItemsets {
             keyEmit.set(parts[0]);
             valEmit.set(parts[1]);
             context.write(keyEmit, valEmit);
-            
         }
     }
 
@@ -86,7 +85,6 @@ public class FrequentItemsets {
             String k = conf.get("k");
             String isDirectory = conf.get("map.record.isDirectory");
             count = conf.get("map.record.isDirectory");
-            System.out.println("enter." + isDirectory);
             if(!isDirectory.equals("true")){
                 nextrecords = Assitance.getNextRecord(record, isDirectory);
             }
@@ -101,11 +99,9 @@ public class FrequentItemsets {
         ) throws IOException, InterruptedException {
             String line = value.toString();
             String parts[] = line.split(",");
-            System.out.println("enter." + line);
             
             if(!count.equals("false")){
                 for(int i = 1; i < parts.length; ++i) {
-                    
                     context.write(new Text(parts[i]), one);
                 }
             } else {
@@ -117,7 +113,6 @@ public class FrequentItemsets {
 
                 for(int i = 0; i < nextrecords.size();i++){
                     String word = "";
-                    System.out.println("enter." + nextrecords.get(i));
                     if(dstr.containsAll(nextrecords.get(i))){
                         for (String s: nextrecords.get(i)) {
                             if (word.equals("")) {
