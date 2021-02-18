@@ -79,61 +79,42 @@ public class PopularMovies {
             String line = value.toString();
             System.out.println("enter." + line);
             String parts[] = line.split(",");
+            String name = line.substring(parts[0].length() + 1);
             int count = 0;
-            context.write(new Text(parts[0]), new Text("_" + parts[1]));
+            context.write(new Text(parts[0]), new Text("_" + name));
             
         }
     }
 
     public static class Reducer1
             extends Reducer<Text,Text,Text,Text> {
-        List<Long> timelist;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            timelist = new ArrayList<>();
-            for (int i = 1995; i <= 2016; i = i + 3) {
-                Calendar c1 = Calendar.getInstance();
-                c1.set(Calendar.MONTH, 1);
-                c1.set(Calendar.DATE, 1);
-                c1.set(Calendar.YEAR, i);
-                Long currenttime = c1.getTime().getTime()/1000;
-                timelist.add(currenttime);
-            }
-        }
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            List<Double> sumlist = new ArrayList<>();
-            List<Integer> numlist = new ArrayList<>();
+            Map<Integer, Double> sumlist = new HashMap<Integer, Double>();
+            Map<Integer, Integer> numlist = new HashMap<Integer, Integer>();
             List<String> genrelist = new ArrayList<>();
             String name = "";
-            for (int i = 1995; i <= 2013; i = i + 3) {
-                sumlist.add(0.0);
-                numlist.add(0);
-            }
             Text keyEmit = new Text();
             Text valEmit = new Text();
-            int size = (2016 - 1995) / 3 + 1;
             for (Text value: values) {
                 String val = value.toString();
                 
                 char myChar = val.charAt(0);
-                String genre;
                 
                 if (Character.isDigit(myChar)) {
                     String timestamp = val.split("_")[1];
-                    String rating = val.split("_")[0];
-                    Long currenttime = Long.parseLong(timestamp);
-                    int currentindex = -1;
-                    for (int i = 0; i < size; ++i) {
-                        if (timelist.get(i) <= currenttime) {
-                            currentindex = i;
-                        }
-                    }
-                    
-                    if (currentindex >= 0 && currentindex + 1 < size) {
-                        sumlist.set(currentindex, sumlist.get(currentindex) + Double.parseDouble(rating));
-                        numlist.set(currentindex, numlist.get(currentindex) + 1);
+                    String ratings = val.split("_")[0];
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTimeInMillis(Long.parseLong(timestamp) * 1000);
+                    int year = cal.get(Calendar.YEAR);
+                    year = (year / 3) * 3;
+                    if (numlist.containsKey(year)) {
+                        sumlist.put(year, sumlist.get(year) + Double.parseDouble(ratings));
+                        numlist.put(year, numlist.get(year) + 1);
+                    } else {
+                        sumlist.put(year, Double.parseDouble(ratings));
+                        numlist.put(year, 1);
                     }
                 } else if (myChar == '_') {
                     name = val.substring(1);
@@ -141,7 +122,7 @@ public class PopularMovies {
                     genrelist.add(val);
                 }
             }
-            for (int i = 0; i < size - 1; ++i) {
+            for (Integer i: numlist.keySet()) {
                 Integer num = numlist.get(i);
                 Double sum = sumlist.get(i);
                 if (num != 0 && name.equals("") == false) {
@@ -158,7 +139,8 @@ public class PopularMovies {
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String all[] = value.toString().split(",");
-            context.write(new Text(all[0]), new Text(all[1]));
+            String remain = value.toString().substring(all[0].length() + 1);
+            context.write(new Text(all[0]), new Text(remain));
         }
     }
 
@@ -167,14 +149,14 @@ public class PopularMovies {
         
 
         // Input: genre_index,sum_num_id
-        List<Integer> convertlist;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            convertlist = new ArrayList<>();
-            for (int i = 1995; i <= 2016; i = i + 3) {
-                convertlist.add(i);
-            }
-        }
+        // List<Integer> convertlist;
+        // protected void setup(Context context
+        // ) throws IOException, InterruptedException {
+        //     convertlist = new ArrayList<>();
+        //     for (int i = 1995; i <= 2016; i = i + 3) {
+        //         convertlist.add(i);
+        //     }
+        // }
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
@@ -206,14 +188,14 @@ public class PopularMovies {
                 Integer num = nummap.get(id);
                 Double sum = summap.get(id);
                 String name = namemap.get(id);
-                if (maxnum < sum/num || (maxnum == sum/num && maxname.compareTo(name) > 0)) {
+                if (maxnum < sum/num || (maxnum == sum/num && (maxname == "" || maxname.compareTo(name) > 0))) {
                     maxid = id;
                     maxname = name;
                     maxnum = sum/num;
                 }
             }
             String all[] = key.toString().split("_");
-            Integer year = convertlist.get(Integer.parseInt(all[1]));
+            Integer year = Integer.parseInt(all[1]);
             assert (maxid != 0 && maxname != "");
             context.write(new Text(year.toString() + "," + all[0]), new Text(maxnum.toString() + "," + maxid.toString() + "," + maxname));
         }

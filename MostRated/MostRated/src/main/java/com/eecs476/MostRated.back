@@ -1,0 +1,222 @@
+package com.eecs476;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.util.*;
+import java.io.File;  // Import the File class
+import java.io.FileNotFoundException;  // Import this class to handle errors
+import java.util.Scanner; // Import the Scanner class to read text files
+import java.io.FileWriter;
+/*
+IntWritable is the Hadoop variant of Integer which has been optimized for serialization in the Hadoop environment.
+An integer would use the default Java Serialization which is very costly in Hadoop environment.
+see: https://stackoverflow.com/questions/52361265/integer-and-intwritable-types-existence
+ */
+
+public class MostRated {
+
+    public static class Mapper1_rating
+            extends Mapper<LongWritable, Text, Text, Text>{
+
+        // Output: id, timestamp
+
+        Text keyEmit = new Text();
+        Text valEmit = new Text();
+        public void map(LongWritable key, Text value, Context context
+        ) throws IOException, InterruptedException {
+            String line = value.toString();
+            String parts[] = line.split(",");
+            keyEmit.set(parts[1]);
+            valEmit.set(parts[3]);
+            context.write(keyEmit, valEmit);
+        }
+    }
+
+    public static class Mapper1_genre
+            extends Mapper<LongWritable, Text, Text, Text>{
+
+        // Output: id, genre
+
+        Text keyEmit = new Text();
+        public void map(LongWritable key, Text value, Context context
+        ) throws IOException, InterruptedException {
+            
+            String line = value.toString();
+            String parts[] = line.split(",");
+            int count = 0;
+            for (String part: parts) {
+                if (count == 0) {
+                    keyEmit.set(part);
+                } else {
+                    context.write(keyEmit, new Text(part));
+                }
+                count++;
+            }
+        }
+    }
+
+    public static class Reducer1
+            extends Reducer<Text,Text,Text,IntWritable> {
+
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            Map<Integer, Integer> indexlist = new HashMap<Integer, Integer>();
+            List<String> genrelist = new ArrayList<>();
+            
+            Text keyEmit = new Text();
+            Text valEmit = new Text();
+            int sum = 0;
+            for (Text value: values) {
+                String val = value.toString();
+                
+                char myChar = val.charAt(0);
+                String genre;
+                
+                if (Character.isDigit(myChar)) {
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTimeInMillis(Long.parseLong(val) * 1000);
+                    int year = cal.get(Calendar.YEAR);
+                    year = (year / 3) * 3;
+                    
+                    if (indexlist.containsKey(year)) {
+                        indexlist.put(year, indexlist.get(year) + 1);
+                    } else {
+                        indexlist.put(year, 1);
+                    }
+                } else {
+                    genrelist.add(val);
+                }
+            }
+            for (Integer i: indexlist.keySet()) {
+                Integer current = indexlist.get(i);
+                if (current != 0) {
+                    for (String genre: genrelist) {
+                        context.write(new Text(genre + "," + i), new IntWritable(current));
+                    }
+                }
+            }
+        }
+    }
+    public static class Mapper2
+            extends Mapper<LongWritable, Text, Text, IntWritable>{
+        
+        public void map(LongWritable key, Text value, Context context
+        ) throws IOException, InterruptedException {
+            String all[] = value.toString().split(",");
+            context.write(new Text(all[0]), new IntWritable(Integer.parseInt(all[1])));
+        }
+    }
+
+    public static class Reducer2
+            extends Reducer<Text,IntWritable,Text,IntWritable> {
+        
+
+        // Input: index_text 1
+        // Output to a csv
+
+        // List<Integer> convertlist;
+        // protected void setup(Context context
+        // ) throws IOException, InterruptedException {
+        //     convertlist = new ArrayList<>();
+        //     for (int i = 1995; i <= 2016; i = i + 3) {
+        //         convertlist.add(i);
+        //     }
+        // }
+        public void reduce(Text key, Iterable<IntWritable> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+            String all[] = key.toString().split("_");
+            Integer year = Integer.parseInt(all[1]);
+            context.write(new Text(all[0] + "," + year.toString()), new IntWritable(sum));
+        }
+    }
+
+    private static String ratingsFile;
+    private static String genresFile;
+    private static String outputScheme;
+    public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
+        for(int i = 0; i < args.length; ++i) {
+            if (args[i].equals("--ratingsFile")) {
+                ratingsFile = args[++i];
+            } else if (args[i].equals("--genresFile")) {
+                genresFile = args[++i];
+            } else if (args[i].equals("--outputScheme")) {
+                outputScheme = args[++i];
+            }
+            else {
+                throw new IllegalArgumentException("Illegal cmd line arguement");
+            }
+        }
+
+        if (ratingsFile == null || genresFile == null || outputScheme == null) {
+            throw new RuntimeException("Either outputpath or input path are not defined");
+        }
+
+        Configuration conf = new Configuration();
+        conf.set("mapred.textoutputformat.separator", ",");
+        conf.set("mapreduce.job.queuename", "eecs476w21");         // required for this to work on GreatLakes
+
+
+        Job mergeJob = Job.getInstance(conf, "mergeJob");
+        mergeJob.setJarByClass(MostRated.class);
+
+        // mergeJob.setMapperClass(Mapper1_rating.class);
+        mergeJob.setReducerClass(Reducer1.class);
+
+        // set mapper output key and value class
+        // if mapper and reducer output are the same types, you skip
+        mergeJob.setMapOutputKeyClass(Text.class);
+        mergeJob.setMapOutputValueClass(Text.class);
+
+        // set reducer output key and value class
+        mergeJob.setOutputKeyClass(Text.class);
+        mergeJob.setOutputValueClass(IntWritable.class);
+
+        MultipleInputs.addInputPath(mergeJob, new Path(ratingsFile), TextInputFormat.class,
+        Mapper1_rating.class);
+        MultipleInputs.addInputPath(mergeJob, new Path(genresFile), TextInputFormat.class,
+        Mapper1_genre.class);
+        // FileInputFormat.addInputPath(mergeJob, new Path(ratingsFile));
+        FileOutputFormat.setOutputPath(mergeJob, new Path(outputScheme + "1"));
+
+        mergeJob.waitForCompletion(true);
+        
+        Job outputJob = Job.getInstance(conf, "outputJob");
+        outputJob.setJarByClass(MostRated.class);
+
+        outputJob.setMapperClass(Mapper2.class);
+        outputJob.setReducerClass(Reducer2.class);
+
+        // set mapper output key and value class
+        // if mapper and reducer output are the same types, you skip
+        outputJob.setMapOutputKeyClass(Text.class);
+        outputJob.setMapOutputValueClass(IntWritable.class);
+
+        // set reducer output key and value class
+        outputJob.setOutputKeyClass(Text.class);
+        outputJob.setOutputValueClass(IntWritable.class);
+
+        FileInputFormat.addInputPath(outputJob, new Path(outputScheme + "1"));
+        FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "2"));
+
+        outputJob.waitForCompletion(true);
+    }
+
+}

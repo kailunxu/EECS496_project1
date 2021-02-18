@@ -37,9 +37,10 @@ public class MostRated {
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String line = value.toString();
+            System.out.println("enter." + line);
             String parts[] = line.split(",");
             keyEmit.set(parts[1]);
-            valEmit.set(parts[3]);
+            valEmit.set(parts[2] + "_" + parts[3]);
             context.write(keyEmit, valEmit);
         }
     }
@@ -54,6 +55,7 @@ public class MostRated {
         ) throws IOException, InterruptedException {
             
             String line = value.toString();
+            System.out.println("enter." + line);
             String parts[] = line.split(",");
             int count = 0;
             for (String part: parts) {
@@ -66,104 +68,73 @@ public class MostRated {
             }
         }
     }
+    
 
     public static class Reducer1
-            extends Reducer<Text,Text,Text,IntWritable> {
-        
-        List<Long> timelist;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            timelist = new ArrayList<>();
-            for (int i = 1995; i <= 2016; i = i + 3) {
-                Calendar c1 = Calendar.getInstance();
-                c1.set(Calendar.MONTH, 1);
-                c1.set(Calendar.DATE, 1);
-                c1.set(Calendar.YEAR, i);
-                Long currenttime = c1.getTime().getTime()/1000;
-                timelist.add(currenttime);
-            }
-        }
-
+            extends Reducer<Text,Text,Text,Text> {
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            List<Integer> indexlist = new ArrayList<>();
+            Map<Integer, Integer> numlist = new HashMap<Integer, Integer>();
             List<String> genrelist = new ArrayList<>();
-            for (int i = 1995; i <= 2013; i = i + 3) {
-                indexlist.add(0);
-            }
             Text keyEmit = new Text();
             Text valEmit = new Text();
-            int sum = 0;
-            int size = (2016 - 1995) / 3 + 1;
             for (Text value: values) {
                 String val = value.toString();
                 
                 char myChar = val.charAt(0);
-                String genre;
                 
                 if (Character.isDigit(myChar)) {
-                    Long currenttime = Long.parseLong(val);
-                    int currentindex = -1;
-                    for (int i = 0; i < size; ++i) {
-                        if (timelist.get(i) <= currenttime) {
-                            currentindex = i;
-                        }
+                    String timestamp = val.split("_")[1];
+                    String ratings = val.split("_")[0];
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTimeInMillis(Long.parseLong(timestamp) * 1000);
+                    int year = cal.get(Calendar.YEAR);
+                    year = (year / 3) * 3;
+                    if (numlist.containsKey(year)) {
+                        numlist.put(year, numlist.get(year) + 1);
+                    } else {
+                        numlist.put(year, 1);
                     }
-                    
-                    if (currentindex >= 0 && currentindex + 1 < size) {
-                        indexlist.set(currentindex, indexlist.get(currentindex) + 1);
-                    }
-                } else {
+                }else {
                     genrelist.add(val);
                 }
             }
-            for (int i = 0; i < size - 1; ++i) {
-                Integer current = indexlist.get(i);
-                if (current != 0) {
+            for (Integer i: numlist.keySet()) {
+                Integer num = numlist.get(i);
+                if (num != 0) {
                     for (String genre: genrelist) {
-                        context.write(new Text(genre + "_" + i), new IntWritable(current));
+                        context.write(new Text(genre + "_" + i), new Text(num.toString()));
                     }
                 }
             }
         }
     }
     public static class Mapper2
-            extends Mapper<LongWritable, Text, Text, IntWritable>{
+            extends Mapper<LongWritable, Text, Text, Text>{
         
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String all[] = value.toString().split(",");
-            System.out.println("enter." + all[0] + ":" + all[1]);
-            context.write(new Text(all[0]), new IntWritable(Integer.parseInt(all[1])));
+            String remain = value.toString().substring(all[0].length() + 1);
+            context.write(new Text(all[0]), new Text(remain));
         }
     }
 
     public static class Reducer2
-            extends Reducer<Text,IntWritable,Text,IntWritable> {
+            extends Reducer<Text,Text,Text,Text> {
         
 
-        // Input: index_text 1
-        // Output to a csv
-
-        List<Integer> convertlist;
-        protected void setup(Context context
-        ) throws IOException, InterruptedException {
-            convertlist = new ArrayList<>();
-            for (int i = 1995; i <= 2016; i = i + 3) {
-                convertlist.add(i);
-            }
-        }
-        public void reduce(Text key, Iterable<IntWritable> values,
+        public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            int sum = 0;
-            for (IntWritable val : values) {
-                sum += val.get();
+            Integer num = 0;
+            for (Text value: values) {
+                num += Integer.parseInt(value.toString());
             }
             String all[] = key.toString().split("_");
-            Integer year = convertlist.get(Integer.parseInt(all[1]));
-            context.write(new Text(all[0] + "," + year.toString()), new IntWritable(sum));
+            Integer year = Integer.parseInt(all[1]);
+            context.write(new Text(all[0] + "," + year.toString()), new Text(num.toString()));
         }
     }
 
@@ -195,7 +166,6 @@ public class MostRated {
 
         Job mergeJob = Job.getInstance(conf, "mergeJob");
         mergeJob.setJarByClass(MostRated.class);
-        mergeJob.setNumReduceTasks(1);
 
         // mergeJob.setMapperClass(Mapper1_rating.class);
         mergeJob.setReducerClass(Reducer1.class);
@@ -207,7 +177,7 @@ public class MostRated {
 
         // set reducer output key and value class
         mergeJob.setOutputKeyClass(Text.class);
-        mergeJob.setOutputValueClass(IntWritable.class);
+        mergeJob.setOutputValueClass(Text.class);
 
         MultipleInputs.addInputPath(mergeJob, new Path(ratingsFile), TextInputFormat.class,
         Mapper1_rating.class);
@@ -220,7 +190,6 @@ public class MostRated {
         
         Job outputJob = Job.getInstance(conf, "outputJob");
         outputJob.setJarByClass(MostRated.class);
-        outputJob.setNumReduceTasks(1);
 
         outputJob.setMapperClass(Mapper2.class);
         outputJob.setReducerClass(Reducer2.class);
@@ -228,11 +197,11 @@ public class MostRated {
         // set mapper output key and value class
         // if mapper and reducer output are the same types, you skip
         outputJob.setMapOutputKeyClass(Text.class);
-        outputJob.setMapOutputValueClass(IntWritable.class);
+        outputJob.setMapOutputValueClass(Text.class);
 
         // set reducer output key and value class
         outputJob.setOutputKeyClass(Text.class);
-        outputJob.setOutputValueClass(IntWritable.class);
+        outputJob.setOutputValueClass(Text.class);
 
         FileInputFormat.addInputPath(outputJob, new Path(outputScheme + "1"));
         FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "2"));
