@@ -46,13 +46,16 @@ public class TransactionFormat {
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            
+            Set<String> set = new HashSet<String>();
             String index="";
             for (Text value : values) {
-                if (index.equals("") == false) {
-                    index = index + "," + value;
+                set.add(value.toString());
+            }
+            for (String s: set) {
+                if (index == "") {
+                    index = s;
                 } else {
-                    index = index + value;
+                    index = index + "," + s;
                 }
             }
             context.write(key, new Text(index));
