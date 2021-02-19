@@ -145,27 +145,26 @@ public class FrequentItemsets {
 
         conf.set("map.record.isDirectory", "true");
         
-        // Job outputJob = Job.getInstance(conf, "outputJob");
-        // outputJob.setJarByClass(FrequentItemsets.class);
+        Job outputJob = Job.getInstance(conf, "outputJob");
+        outputJob.setJarByClass(FrequentItemsets.class);
 
-        // outputJob.setMapperClass(Mapper2.class);
-        // outputJob.setReducerClass(Reducer2.class);
+        outputJob.setMapperClass(Mapper2.class);
+        outputJob.setReducerClass(Reducer2.class);
 
-        // // set mapper output key and value class
-        // // if mapper and reducer output are the same types, you skip
-        // outputJob.setMapOutputKeyClass(Text.class);
-        // outputJob.setMapOutputValueClass(IntWritable.class);
+        // set mapper output key and value class
+        // if mapper and reducer output are the same types, you skip
+        outputJob.setMapOutputKeyClass(Text.class);
+        outputJob.setMapOutputValueClass(IntWritable.class);
 
-        // // set reducer output key and value class
-        // outputJob.setOutputKeyClass(Text.class);
-        // outputJob.setOutputValueClass(Text.class);
+        // set reducer output key and value class
+        outputJob.setOutputKeyClass(Text.class);
+        outputJob.setOutputValueClass(Text.class);
 
-        // FileInputFormat.addInputPath(outputJob, new Path(ratingsFile));
-        // FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "1"));
+        FileInputFormat.addInputPath(outputJob, new Path(ratingsFile));
+        FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "1"));
 
-        // outputJob.waitForCompletion(true);
+        outputJob.waitForCompletion(true);
 
-        
         Integer i = 1;
         while (i < k) {
             conf.set("map.record.isDirectory", "false");
