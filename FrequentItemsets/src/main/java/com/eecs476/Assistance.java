@@ -33,11 +33,9 @@ public class Assistance {
 
             Text line = new Text();
             while (lineReader.readLine(line) > 0) {
-                List<String> tempList = new ArrayList<String>();
                 // ArrayList<Double> tempList = textToArray(line);
                 String[] fields = line.toString().split(",");
                 
-                Collections.sort(tempList);
                 result.add(fields[0]);
             }
             lineReader.close();
@@ -50,105 +48,6 @@ public class Assistance {
         return result;
     }
 
-    public static Map<String, Integer> getMap(String nextrecord) {
-        
-        Map<String, Integer> result = new HashMap<String, Integer>();
 
-        try {
-            Path path = new Path(nextrecord);
-
-            Configuration conf = new Configuration();
-
-            FileSystem fileSystem = path.getFileSystem(conf);
-
-            FSDataInputStream fsis = fileSystem.open(path);
-            LineReader lineReader = new LineReader(fsis, conf);
-
-            Text line = new Text();
-            while (lineReader.readLine(line) > 0) {
-                List<String> tempList = new ArrayList<String>();
-                String[] fields = line.toString().split(",");
-                
-                result.put(fields[0], Integer.parseInt(fields[1]));
-            }
-            lineReader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return result;
-    }
-
-    private static List<List<String>> connectRecord(List<List<String>> result) {
-
-        List<List<String>> nextCandidateItemset = new ArrayList<List<String>>();
-        for (int i = 0; i < result.size(); i++) {
-
-            HashSet<String> hsSet = new HashSet<String>();
-            HashSet<String> hsSettemp = new HashSet<String>();
-            for (int k = 0; k < result.get(i).size(); k++) {
-                hsSet.add(result.get(i).get(k));
-            }
-            int hsLength_before = hsSet.size();
-            hsSettemp = (HashSet<String>) hsSet.clone();
-            for (int h = i + 1; h < result.size(); h++) {
-                hsSet = (HashSet<String>) hsSettemp.clone();
-                for (int j = 0; j < result.get(h).size(); j++)
-                    hsSet.add(result.get(h).get(j));
-                int hsLength_after = hsSet.size();
-                if (hsLength_before + 1 == hsLength_after
-                        && isnotHave(hsSet, nextCandidateItemset)
-                        && isSubSet(hsSet, result)) {
-                    
-                    List<String> tempList = new ArrayList<String>();
-                    for (String Item: hsSet) {
-                        tempList.add(Item);
-                    }
-                    Collections.sort(tempList);
-                    nextCandidateItemset.add(tempList);
-                }
-            }
-        }
-        return nextCandidateItemset;
-    }
-
-    private static boolean isSubSet(HashSet<String> hsSet,
-            List<List<String>> result) {
-
-        List<String> tempList = new ArrayList<String>();
-
-        for (String Item: hsSet) {
-            tempList.add(Item);
-        }
-        Collections.sort(tempList); 
-        List<List<String>> sublist = new ArrayList<List<String>>();
-
-        for(int i = 0; i < tempList.size(); i++){
-            List<String> temp = new ArrayList<String>();
-            for(int j = 0; j < tempList.size(); j++){
-                temp.add(tempList.get(j));
-            }
-            temp.remove(temp.get(i));
-            sublist.add(temp);
-
-        }
-        if(result.containsAll(sublist)){
-            return true;
-        }
-
-        return true;
-    }
-
-    private static boolean isnotHave(HashSet<String> hsSet,
-            List<List<String>> nextCandidateItemset) {
-        List<String> tempList = new ArrayList<String>();
-        for (String Item: hsSet) {
-            tempList.add(Item);
-        }
-        Collections.sort(tempList);
-        if(nextCandidateItemset.contains(tempList)){
-            return false;
-        }
-        return true;
-    }
 
 }

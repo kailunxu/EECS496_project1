@@ -42,7 +42,6 @@ public class FrequentItemsets {
             if(!isDirectory.equals("true")){
                 nextrecords = Assistance.getNextRecord(record);
             }
-            
         }
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
@@ -54,19 +53,18 @@ public class FrequentItemsets {
                     context.write(new Text(parts[i]), one);
                 }
             } else {
-                List<String> dstr = new ArrayList<String>();
+                Set<String> dstr = new HashSet<String>();
             
                 for(int i = 1; i < parts.length; ++i){
                     dstr.add(parts[i]);
                 }
 
-                for(int i = 0; i < nextrecords.size(); i++){
+                for(int i = 0; i < nextrecords.size();i++){
                     for (int j = i + 1; j < nextrecords.size(); ++j) {
                         String word = "";
-                        String ele1 = nextrecords.get(i);
-                        String ele2 = nextrecords.get(j);
-                        if(dstr.contains(ele1) && dstr.contains(ele2)){
-                            context.write(new Text(ele1 + "," + ele2), one);
+                        if(dstr.contains(nextrecords.get(i))&&dstr.contains(nextrecords.get(j))){
+                            word = nextrecords.get(i) + "," + nextrecords.get(j);
+                            context.write(new Text(word), one);
                         }
                     }
                 }
@@ -152,6 +150,7 @@ public class FrequentItemsets {
 
         outputJob.waitForCompletion(true);
 
+        // Assitance.SaveNextRecords(outputScheme + "2", "output", 0);
         Integer i = 1;
         while (i < k) {
             conf.set("map.record.isDirectory", "false");
