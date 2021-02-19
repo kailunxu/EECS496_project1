@@ -29,7 +29,7 @@ public class FrequentItemsets {
             extends Mapper<LongWritable, Text, Text, IntWritable>{
 
         // Output: id, timestamp
-        public List<List<String>> nextrecords = new ArrayList<List<String>>();
+        public List<String> nextrecords = new ArrayList<String>();
         public ArrayList<String> allitems = new ArrayList<String>();
 
         private final static IntWritable one = new IntWritable(1);
@@ -42,17 +42,7 @@ public class FrequentItemsets {
             if(!isDirectory.equals("true")){
                 nextrecords = Assistance.getNextRecord(record);
             }
-            for (List<String> nextrecord: nextrecords) {
-                for (String s: nextrecord) {
-                    System.out.print(s + " ");
-                }
-                System.out.println("\n");
-            }
-            if(nextrecords.isEmpty()||nextrecords.size()==0){
-                List<String> finish = new ArrayList<String>();
-                finish.add("null");
-                nextrecords.add(finish);
-            }
+            
         }
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
@@ -70,17 +60,14 @@ public class FrequentItemsets {
                     dstr.add(parts[i]);
                 }
 
-                for(int i = 0; i < nextrecords.size();i++){
-                    String word = "";
-                    if(dstr.containsAll(nextrecords.get(i))){
-                        for (String s: nextrecords.get(i)) {
-                            if (word.equals("")) {
-                                word = s;
-                            } else {
-                                word = word + "," + s;
-                            }
+                for(int i = 0; i < nextrecords.size(); i++){
+                    for (int j = i + 1; j < nextrecords.size(); ++j) {
+                        String word = "";
+                        String ele1 = nextrecords.get(i);
+                        String ele2 = nextrecords.get(j);
+                        if(dstr.contains(ele1) && dstr.contains(ele2)){
+                            context.write(new Text(ele1 + "," + ele2), one);
                         }
-                        context.write(new Text(word), one);
                     }
                 }
             }

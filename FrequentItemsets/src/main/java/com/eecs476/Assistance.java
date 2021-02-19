@@ -16,10 +16,10 @@ import org.apache.hadoop.util.LineReader;
 import java.util.*;
 public class Assistance {
 
-    public static List<List<String>> getNextRecord(String nextrecord) {
+    public static List<String> getNextRecord(String nextrecord) {
         
         
-        List<List<String>> result = new ArrayList<List<String>>();
+        List<String> result = new ArrayList<String>();
 
         try {
             Path path = new Path(nextrecord);
@@ -36,14 +36,12 @@ public class Assistance {
                 List<String> tempList = new ArrayList<String>();
                 // ArrayList<Double> tempList = textToArray(line);
                 String[] fields = line.toString().split(",");
-                for (int i = 0; i < fields.length - 1; i++) {
-                    tempList.add(fields[i]);
-                }
+                
                 Collections.sort(tempList);
-                result.add(tempList);
+                result.add(fields[0]);
             }
             lineReader.close();
-            result = connectRecord(result);
+            // result = connectRecord(result);
         } catch (IOException e) {
             e.printStackTrace();
         }
