@@ -39,7 +39,6 @@ public class Assistance {
                 result.add(fields[0]);
             }
             lineReader.close();
-            // result = connectRecord(result);
         } catch (IOException e) {
             e.printStackTrace();
         }

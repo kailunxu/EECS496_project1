@@ -30,45 +30,42 @@ public class FrequentItemsets {
 
         // Output: id, timestamp
         public List<String> nextrecords = new ArrayList<String>();
-        public ArrayList<String> allitems = new ArrayList<String>();
 
         private final static IntWritable one = new IntWritable(1);
-        private String isDirectory;
+
         protected void setup(Context context
         ) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
             String record = conf.get("map.record.file");
-            isDirectory = conf.get("map.record.isDirectory");
-            if(!isDirectory.equals("true")){
-                nextrecords = Assistance.getNextRecord(record);
-            }
+            nextrecords = Assistance.getNextRecord(record);
         }
+
         public void map(LongWritable key, Text value, Context context
         ) throws IOException, InterruptedException {
             String line = value.toString();
             String parts[] = line.split(",");
-            
-            if(!isDirectory.equals("false")){
-                for(int i = 1; i < parts.length; ++i) {
-                    context.write(new Text(parts[i]), one);
-                }
-            } else {
+            // if(!isDirectory.equals("false")){
+            //     for(int i = 1; i < parts.length; ++i) {
+            //         context.write(new Text(parts[i]), one);
+            //     }
+            // } else {
                 Set<String> dstr = new HashSet<String>();
-            
+                List<String> dstrnew = new ArrayList<String>();
                 for(int i = 1; i < parts.length; ++i){
                     dstr.add(parts[i]);
                 }
 
-                for(int i = 0; i < nextrecords.size();i++){
-                    for (int j = i + 1; j < nextrecords.size(); ++j) {
-                        String word = "";
-                        if(dstr.contains(nextrecords.get(i))&&dstr.contains(nextrecords.get(j))){
-                            word = nextrecords.get(i) + "," + nextrecords.get(j);
-                            context.write(new Text(word), one);
-                        }
+                for(String s: nextrecords){
+                    if (dstr.contains(s)) {
+                        dstrnew.add(s);
                     }
                 }
-            }
+                for (int i = 0; i < dstrnew.size(); ++i) {
+                    for (int j = i + 1; j < dstrnew.size(); ++j) {
+                        context.write(new Text(dstrnew.get(i) + "," + dstrnew.get(j)), one);
+                    }
+                }
+            // }
         }
     }
 
@@ -130,25 +127,25 @@ public class FrequentItemsets {
 
         conf.set("map.record.isDirectory", "true");
         
-        Job outputJob = Job.getInstance(conf, "outputJob");
-        outputJob.setJarByClass(FrequentItemsets.class);
+        // Job outputJob = Job.getInstance(conf, "outputJob");
+        // outputJob.setJarByClass(FrequentItemsets.class);
 
-        outputJob.setMapperClass(Mapper2.class);
-        outputJob.setReducerClass(Reducer2.class);
+        // outputJob.setMapperClass(Mapper2.class);
+        // outputJob.setReducerClass(Reducer2.class);
 
-        // set mapper output key and value class
-        // if mapper and reducer output are the same types, you skip
-        outputJob.setMapOutputKeyClass(Text.class);
-        outputJob.setMapOutputValueClass(IntWritable.class);
+        // // set mapper output key and value class
+        // // if mapper and reducer output are the same types, you skip
+        // outputJob.setMapOutputKeyClass(Text.class);
+        // outputJob.setMapOutputValueClass(IntWritable.class);
 
-        // set reducer output key and value class
-        outputJob.setOutputKeyClass(Text.class);
-        outputJob.setOutputValueClass(Text.class);
+        // // set reducer output key and value class
+        // outputJob.setOutputKeyClass(Text.class);
+        // outputJob.setOutputValueClass(Text.class);
 
-        FileInputFormat.addInputPath(outputJob, new Path(ratingsFile));
-        FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "1"));
+        // FileInputFormat.addInputPath(outputJob, new Path(ratingsFile));
+        // FileOutputFormat.setOutputPath(outputJob, new Path(outputScheme + "1"));
 
-        outputJob.waitForCompletion(true);
+        // outputJob.waitForCompletion(true);
 
         // Assitance.SaveNextRecords(outputScheme + "2", "output", 0);
         Integer i = 1;
