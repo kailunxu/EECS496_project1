@@ -33,18 +33,14 @@ public class FrequentItemsets {
         public ArrayList<String> allitems = new ArrayList<String>();
 
         private final static IntWritable one = new IntWritable(1);
-        
-        private static String count = null;
-
+        private String isDirectory;
         protected void setup(Context context
         ) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
             String record = conf.get("map.record.file");
-            String k = conf.get("k");
-            String isDirectory = conf.get("map.record.isDirectory");
-            count = conf.get("map.record.isDirectory");
+            isDirectory = conf.get("map.record.isDirectory");
             if(!isDirectory.equals("true")){
-                nextrecords = Assitance.getNextRecord(record, isDirectory);
+                nextrecords = Assistance.getNextRecord(record);
             }
             for (List<String> nextrecord: nextrecords) {
                 for (String s: nextrecord) {
@@ -63,7 +59,7 @@ public class FrequentItemsets {
             String line = value.toString();
             String parts[] = line.split(",");
             
-            if(!count.equals("false")){
+            if(!isDirectory.equals("false")){
                 for(int i = 1; i < parts.length; ++i) {
                     context.write(new Text(parts[i]), one);
                 }
