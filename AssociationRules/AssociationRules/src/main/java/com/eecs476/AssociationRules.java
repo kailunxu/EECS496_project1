@@ -25,49 +25,6 @@ import java.io.FileWriter;
 
 public class AssociationRules {
 
-    public static class Mapper1_rating
-            extends Mapper<LongWritable, Text, Text, Text>{
-
-        // Output: id, timestamp
-
-        Text keyEmit = new Text();
-        Text valEmit = new Text();
-        public void map(LongWritable key, Text value, Context context
-        ) throws IOException, InterruptedException {
-            String line = value.toString();
-            String parts[] = line.split(",");
-            keyEmit.set(parts[0]);
-            valEmit.set(parts[1]);
-            context.write(keyEmit, valEmit);
-            
-        }
-    }
-
-    public static class Reducer1
-            extends Reducer<Text,Text,Text,Text> {
-        
-
-        public void reduce(Text key, Iterable<Text> values,
-                           Context context
-        ) throws IOException, InterruptedException {
-            
-            String index="";
-            ArrayList<String> list = new ArrayList<String>();
-            for (Text value : values) {
-                list.add(value.toString());
-            }
-            Collections.sort(list);
-            for (String s: list) {
-                if (index.equals("") == false) {
-                    index = index + "," + s;
-                } else {
-                    index = index + s;
-                }
-            }
-            context.write(key, new Text(index));
-        }
-    }
-
     public static class Mapper2
             extends Mapper<LongWritable, Text, Text, IntWritable>{
 
@@ -129,7 +86,7 @@ public class AssociationRules {
             Configuration conf = context.getConfiguration();
             String record = conf.get("map.record.file");
             String k = conf.get("k");
-            nextrecords = Assitance.getNextRecord(record, "false");
+            nextrecords = Assistance.getNextRecord(record);
         }
 
         public void map(LongWritable key, Text value, Context context
@@ -166,7 +123,7 @@ public class AssociationRules {
             Configuration conf = context.getConfiguration();
             s = Integer.parseInt(conf.get("s"));
             String record = conf.get("map.record.file");
-            numberrecords = Assitance.getMap(record);
+            numberrecords = Assistance.getMap(record);
         }
 
         public void reduce(Text key, Iterable<IntWritable> values,
@@ -241,9 +198,8 @@ public class AssociationRules {
 
         outputJob.waitForCompletion(true);
 
-        // Assitance.SaveNextRecords(outputScheme + "2", "output", 0);
 
-        conf.set("map.record.file", outputScheme + "2/part-r-00000");
+        conf.set("map.record.file", outputScheme + "1/part-r-00000");
 
         Job outputJob2 = Job.getInstance(conf, "outputJob");
         outputJob2.setJarByClass(AssociationRules.class);
@@ -266,6 +222,5 @@ public class AssociationRules {
 
         outputJob2.waitForCompletion(true);
 
-        // Assitance.SaveNextRecords(outputScheme + "3", "output", 1);
     }
 }
